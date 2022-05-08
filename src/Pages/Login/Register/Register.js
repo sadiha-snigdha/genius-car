@@ -1,12 +1,22 @@
-import React from "react";
+import React, { useState } from "react";
 import { Button, Form } from "react-bootstrap";
 import { Link, useNavigate } from "react-router-dom";
-import { useCreateUserWithEmailAndPassword } from "react-firebase-hooks/auth";
+import {
+  useCreateUserWithEmailAndPassword,
+  useUpdateProfile,
+} from "react-firebase-hooks/auth";
 import auth from "../../../firebase.init";
+import SocialLogin from "../SocialLogin/SocialLogin";
+import { async } from "@firebase/util";
+import Loading from "../../Shared/Loading/Loading";
 
 const Register = () => {
+  const [agree, setAgree] = useState(false);
+
   const [createUserWithEmailAndPassword, user, loading, error] =
-    useCreateUserWithEmailAndPassword(auth);
+    useCreateUserWithEmailAndPassword(auth, { sendEmailVerification: true });
+
+  const [updateProfile, updating, updateError] = useUpdateProfile(auth);
 
   const navigate = useNavigate();
 
@@ -14,18 +24,26 @@ const Register = () => {
     navigate("/login");
   };
 
-  if (user) {
-    navigate("/home");
+  if (loading || updating) {
+    return <Loading></Loading>;
   }
 
-  const handleRegister = (event) => {
+  if (user) {
+    console.log("user", user);
+  }
+
+  const handleRegister = async (event) => {
     event.preventDefault();
 
     const name = event.target.name.value;
     const email = event.target.email.value;
     const password = event.target.password.value;
 
-    createUserWithEmailAndPassword(email, password);
+    // const agree = event.target.terms.checked;
+    await createUserWithEmailAndPassword(email, password);
+    await updateProfile({ displayName: name });
+    console.log("Updated profile");
+    navigate("/home");
   };
 
   return (
@@ -64,10 +82,25 @@ const Register = () => {
             required
           />
         </Form.Group>
+
         <Form.Group className="mb-3" controlId="formBasicCheckbox">
-          <Form.Check type="checkbox" label="Check me out" />
+          <Form.Check
+            onClick={() => setAgree(!agree)}
+            name="terms"
+            id="terms"
+            type="checkbox"
+            label="Accept Genius Car Terms and Conditions"
+            // className={agree ? "text-primary ps-2" : "text-danger ps-2"}
+            className={`ps-2  ${agree ? "" : "text-danger"}`}
+          />
         </Form.Group>
-        <Button variant="primary" type="submit">
+
+        <Button
+          disabled={!agree}
+          className="primary w-50 mx-auto d-block"
+          variant="primary"
+          type="submit"
+        >
           Register
         </Button>
       </Form>
@@ -76,12 +109,13 @@ const Register = () => {
         Have an account?{" "}
         <Link
           to="/login"
-          className="text-danger pe-auto text-decoration-none"
+          className="text-primary pe-auto text-decoration-none"
           onClick={navigateLogin}
         >
           Please Login
         </Link>
       </p>
+      <SocialLogin></SocialLogin>
     </div>
   );
 };
